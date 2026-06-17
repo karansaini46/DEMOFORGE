@@ -1,0 +1,24 @@
+# Claude local config (contains secrets)
+.claude/
+
+# Node
+node_modules/
+dist/
+build/
+
+# Env / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+backend/logs/*
+!backend/logs/.gitkeep
+
+# Temp
+backend/temp/*
+!backend/temp/.gitkeep
+
+# OS
+.DS_Store

@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  plan         Plan     @default(FREE)
+  monthlyUsage Int      @default(0)
+  usageResetAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  jobs         Job[]
+  videos       Video[]
+
+  @@index([email])
+}
+
+enum Plan {
+  FREE
+  PRO
+}
+
+model Job {
+  id           String    @id @default(uuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url          String
+  templateId   String
+  status       JobStatus @default(PENDING)
+  currentStep  String?
+  stepProgress Int       @default(0)
+  errorMessage String?
+  metadata     Json?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  video        Video?
+
+  @@index([userId])
+  @@index([status])
+}
+
+enum JobStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+model Video {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  jobId       String   @unique
+  job         Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  title       String
+  url         String
+  storagePath String
+  publicUrl   String
+  templateId  String
+  durationSec Float
+  fileSizeMb  Float
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
+}
