@@ -310,6 +310,7 @@ function VideoResult({ video }: VideoResultProps) {
       <h3 className="text-sm font-semibold text-gray-700">Your demo video</h3>
 
       <div className="aspect-video overflow-hidden rounded-lg bg-black">
+        {/* @ts-expect-error react-player types are currently broken with TS 5+ */}
         <ReactPlayer
           url={video.publicUrl}
           controls
