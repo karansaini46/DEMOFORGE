@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useCallback } from 'react';
 import toast from 'react-hot-toast';
-import ReactPlayer from 'react-player';
+
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { createJob, Job } from '../api/job.api';
@@ -310,12 +310,10 @@ function VideoResult({ video }: VideoResultProps) {
       <h3 className="text-sm font-semibold text-gray-700">Your demo video</h3>
 
       <div className="aspect-video overflow-hidden rounded-lg bg-black">
-        {/* @ts-expect-error react-player types are currently broken with TS 5+ */}
-        <ReactPlayer
-          url={video.publicUrl}
+        <video
+          src={video.publicUrl}
           controls
-          width="100%"
-          height="100%"
+          className="h-full w-full"
         />
       </div>
 
