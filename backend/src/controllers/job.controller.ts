@@ -34,7 +34,7 @@ export const createJob = asyncHandler(async (req: Request, res: Response) => {
   // Add to BullMQ
   await jobQueue.add('generate-demo', { jobId: job.id, url, templateId });
 
-  res.status(201).json({ job });
+  res.status(201).json({ jobId: job.id, job });
 });
 
 export const getJob = asyncHandler(async (req: Request, res: Response) => {
@@ -50,18 +50,27 @@ export const getJob = asyncHandler(async (req: Request, res: Response) => {
     throw new AppError('Job not found', 404);
   }
 
-  res.status(200).json({ job });
+  res.status(200).json(job);
 });
 
 export const listJobs = asyncHandler(async (req: Request, res: Response) => {
   const userId = req.user?.id;
-  const jobs = await prisma.job.findMany({
-    where: { userId },
-    orderBy: { createdAt: 'desc' },
-    include: { video: true },
-  });
+  const page = parseInt(req.query.page as string, 10) || 1;
+  const limit = parseInt(req.query.limit as string, 10) || 10;
+  const skip = (page - 1) * limit;
 
-  res.status(200).json({ jobs });
+  const [jobs, total] = await Promise.all([
+    prisma.job.findMany({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      include: { video: true },
+      skip,
+      take: limit,
+    }),
+    prisma.job.count({ where: { userId } }),
+  ]);
+
+  res.status(200).json({ jobs, total, page, limit });
 });
 
 export const deleteJob = asyncHandler(async (req: Request, res: Response) => {
