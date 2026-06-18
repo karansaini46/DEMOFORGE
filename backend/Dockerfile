@@ -1,36 +1,19 @@
-# Use the official Playwright image which includes Node.js and browser dependencies
-FROM mcr.microsoft.com/playwright:v1.48.2-jammy
-
+FROM node:20-slim
+RUN apt-get update && apt-get install -y ffmpeg python3 python3-pip \
+libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
+libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 \
+libxrandr2 libgbm1 libasound2 --no-install-recommends && \
+pip3 install edge-tts --break-system-packages && \
+rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-
-# Install Python (for edge-tts) and FFmpeg
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
-
-# Install edge-tts via pip
-RUN pip3 install edge-tts
-
-# Copy package files first for better caching
 COPY package*.json ./
-COPY prisma ./prisma/
-
-# Install Node dependencies
+# Use npm ci but keep devDependencies for build, then prune
 RUN npm ci
-
-# Generate Prisma client
+COPY prisma ./prisma/
 RUN npx prisma generate
-
-# Copy the rest of the application code
 COPY . .
-
-# Build the TypeScript code
+RUN npx playwright install chromium --with-deps
 RUN npm run build
-
-# Expose the port the app runs on
+RUN mkdir -p temp
 EXPOSE 4000
-
-# Start the application
-CMD ["npm", "start"]
+CMD ["node", "dist/index.js"]

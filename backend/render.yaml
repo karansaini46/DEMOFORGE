@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: demoforge-api
+    env: docker
+    plan: starter
+    dockerfilePath: ./backend/Dockerfile
+    healthCheckPath: /api/health
