@@ -48,8 +48,12 @@ export async function generateScript(
     const result = await model.generateContent(prompt);
     const text = result.response.text().trim();
     
-    // Strip markdown formatting if the model accidentally included it
-    const jsonString = text.replace(/```json/g, '').replace(/```/g, '');
+    // Extract the JSON object using regex to ignore any conversational text
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error(`Could not find JSON object in Gemini response: ${text.substring(0, 100)}...`);
+    }
+    const jsonString = jsonMatch[0];
     
     const parsed: GeneratedScript = JSON.parse(jsonString);
     
@@ -61,6 +65,7 @@ export async function generateScript(
     return parsed;
   } catch (error) {
     logger.error(`[${jobId}] Failed to generate script: ${error}`);
-    throw new Error('Failed to generate script from scraped data');
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    throw new Error(`Gemini API Error: ${errorMsg}`);
   }
 }
