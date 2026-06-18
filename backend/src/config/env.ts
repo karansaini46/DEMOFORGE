@@ -31,6 +31,10 @@ const envSchema = z.object({
   MAX_CONCURRENT_JOBS: z.coerce.number().int().positive(),
   JOB_TIMEOUT_MS: z.coerce.number().int().positive(),
   MAX_VIDEO_DURATION_SECONDS: z.coerce.number().int().positive(),
+  // Temp-dir cleanup cadence (must be 1-59 for the */N cron expression) and
+  // the age past which a job temp dir is considered stale and removed.
+  CLEANUP_INTERVAL_MINUTES: z.coerce.number().int().min(1).max(59).default(30),
+  TEMP_FILE_MAX_AGE_HOURS: z.coerce.number().int().positive().default(24),
   PLAYWRIGHT_TIMEOUT_MS: z.coerce.number().int().positive(),
   PLAYWRIGHT_NAVIGATION_TIMEOUT_MS: z.coerce
     .number()

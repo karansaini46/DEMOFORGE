@@ -3,6 +3,8 @@ import Redis from 'ioredis';
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 
+import { assertEdgeTts } from './utils/preflight';
+
 dotenv.config();
 
 async function checkConnections() {
@@ -64,8 +66,19 @@ async function checkConnections() {
       console.error('❌ Supabase: Connection failed - SUPABASE_URL or SUPABASE_SERVICE_KEY is not set in .env');
   }
 
+  // 4. Check edge-tts CLI (used by the TTS pipeline)
+  try {
+    await assertEdgeTts();
+    console.log('✅ edge-tts: Available on PATH');
+  } catch (error) {
+    console.error(
+      '❌ edge-tts: Not available',
+      error instanceof Error ? error.message : error,
+    );
+  }
+
   console.log('--- Check Complete ---');
-  
+
   // Cleanup
   await prisma.$disconnect();
   if (redis) redis.disconnect();
