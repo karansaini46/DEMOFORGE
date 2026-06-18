@@ -32,6 +32,11 @@ const envSchema = z.object({
   JOB_TIMEOUT_MS: z.coerce.number().int().positive(),
   MAX_VIDEO_DURATION_SECONDS: z.coerce.number().int().positive(),
   PLAYWRIGHT_TIMEOUT_MS: z.coerce.number().int().positive(),
+  PLAYWRIGHT_NAVIGATION_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(45000),
 
   RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive(),
   RATE_LIMIT_MAX_GLOBAL: z.coerce.number().int().positive(),
