@@ -10,6 +10,7 @@ interface JwtPayload {
   email: string;
   plan: string;
   jti: string;
+  exp?: number;
 }
 
 /**
@@ -52,6 +53,8 @@ export const requireAuth: RequestHandler = async (req, _res, next) => {
       id: payload.sub,
       email: payload.email,
       plan: payload.plan,
+      jti: payload.jti,
+      exp: payload.exp,
     };
 
     next();

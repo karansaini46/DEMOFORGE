@@ -6,6 +6,9 @@ declare global {
       id: string;
       email: string;
       plan: string;
+      jti: string;
+      /** Token expiry (epoch seconds), used to scope the logout blacklist TTL. */
+      exp?: number;
     }
 
     interface Request {
