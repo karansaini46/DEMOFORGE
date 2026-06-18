@@ -10,8 +10,8 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# Install edge-tts via pip (using --break-system-packages for Ubuntu 22.04+ pip environment)
-RUN pip3 install edge-tts --break-system-packages
+# Install edge-tts via pip
+RUN pip3 install edge-tts
 
 # Copy package files first for better caching
 COPY package*.json ./
