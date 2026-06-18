@@ -23,16 +23,12 @@ export async function renderOverlay(params: {
   const inputProps = { script, jobId };
 
   const timeoutInMilliseconds = 120000;
-  const chromiumOptions = {
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
-  };
 
   const composition = await selectComposition({
     serveUrl: bundleLocation,
     id: templateId,
     inputProps,
     timeoutInMilliseconds,
-    chromiumOptions,
   });
 
   const outputPath = path.join(tempDir, 'overlay.mp4');
@@ -44,7 +40,6 @@ export async function renderOverlay(params: {
     outputLocation: outputPath,
     inputProps,
     timeoutInMilliseconds,
-    chromiumOptions,
   });
 
   logger.info(`[${jobId}] Remotion overlay rendered at: ${outputPath}`);
