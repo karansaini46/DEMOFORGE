@@ -58,7 +58,7 @@ export async function record(
             logger.warn(`[${jobId}] Click action failed for selector ${selector}: ${err.message}`);
           });
         } else if (section.action === 'scroll:down') {
-          await page.evaluate(() => window.scrollBy(0, 400));
+          await page.evaluate('window.scrollBy(0, 400)');
         } else if (section.action.startsWith('wait:')) {
           const waitTime = parseInt(section.action.split('wait:')[1].trim(), 10);
           if (!isNaN(waitTime)) {

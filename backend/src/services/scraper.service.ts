@@ -63,9 +63,10 @@ export async function scrape(
 
     await page.goto(validatedUrl, { waitUntil: 'networkidle' });
 
-    const extracted = await page.evaluate(() => {
-      const text = (el: Element): string =>
-        (el as HTMLElement).innerText?.trim() ?? '';
+    // NOTE: Using a string for page.evaluate to prevent tsx/esbuild from
+    // injecting __name helpers that don't exist in the browser context.
+    const extracted = await page.evaluate(`(() => {
+      const text = (el) => el.innerText?.trim() ?? '';
 
       const title = document.title;
 
@@ -85,17 +86,17 @@ export async function scrape(
       const navItems = Array.from(document.querySelectorAll('nav a, header a'))
         .map((el) => ({
           text: text(el),
-          href: (el as HTMLAnchorElement).href,
+          href: el.href,
         }))
         .filter((item) => item.href.length > 0)
         .slice(0, 6);
 
-      const buildSelector = (el: Element): string => {
+      const buildSelector = (el) => {
         const tag = el.tagName.toLowerCase();
         const className =
           typeof el.className === 'string' ? el.className.trim() : '';
         if (!className) return tag;
-        return tag + '.' + className.split(/\s+/).join('.');
+        return tag + '.' + className.split(/\\s+/).join('.');
       };
 
       const interactableElements = Array.from(
@@ -104,8 +105,8 @@ export async function scrape(
         .map((el) => {
           const label =
             text(el) ||
-            (el as HTMLInputElement).placeholder ||
-            (el as HTMLInputElement).value ||
+            el.placeholder ||
+            el.value ||
             '';
           const type = el.getAttribute('type') || el.tagName.toLowerCase();
           return { label, selector: buildSelector(el), type };
@@ -113,7 +114,13 @@ export async function scrape(
         .slice(0, 10);
 
       return { title, description, features, navItems, interactableElements };
-    });
+    })()`) as {
+      title: string;
+      description: string;
+      features: string[];
+      navItems: { text: string; href: string }[];
+      interactableElements: { label: string; selector: string; type: string }[];
+    };
 
     // Main screenshot.
     const screenshots: string[] = [];

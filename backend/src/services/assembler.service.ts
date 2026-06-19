@@ -22,15 +22,17 @@ export async function assemble(
   const { jobId, recordingPath, audioSegments, overlayPath } = params;
   logger.info(`[${jobId}] Starting video assembler`);
 
-  const normPath = path.join(tempDir, 'recording_norm.mp4');
-  const mergedAudioPath = path.join(tempDir, 'merged_audio.mp3');
-  const compositedPath = path.join(tempDir, 'composited.mp4');
-  const finalPath = path.join(tempDir, 'final.mp4');
+  // Resolve all paths to absolute — ffmpeg subprocess needs absolute paths
+  const absTempDir = path.resolve(tempDir);
+  const normPath = path.join(absTempDir, 'recording_norm.mp4');
+  const mergedAudioPath = path.join(absTempDir, 'merged_audio.mp3');
+  const compositedPath = path.join(absTempDir, 'composited.mp4');
+  const finalPath = path.join(absTempDir, 'final.mp4');
 
   // STEP 1: Normalize recording
   logger.info(`[${jobId}] STEP 1: Normalizing recording to h264 720p 30fps...`);
   await new Promise<void>((resolve, reject) => {
-    ffmpeg(recordingPath)
+    ffmpeg(path.resolve(recordingPath))
       .outputOptions([
         '-vf scale=1280:720',
         '-r 30',
@@ -46,8 +48,8 @@ export async function assemble(
   // STEP 2: Concat audio segments
   logger.info(`[${jobId}] STEP 2: Concatenating audio segments...`);
   if (audioSegments.length > 0) {
-    const concatListPath = path.join(tempDir, 'concat.txt');
-    const concatContent = audioSegments.map((a) => `file '${a}'`).join('\n');
+    const concatListPath = path.join(absTempDir, 'concat.txt');
+    const concatContent = audioSegments.map((a) => `file '${path.resolve(a)}'`).join('\n');
     await fs.writeFile(concatListPath, concatContent);
 
     await new Promise<void>((resolve, reject) => {
@@ -68,7 +70,7 @@ export async function assemble(
   await new Promise<void>((resolve, reject) => {
     ffmpeg()
       .input(normPath)
-      .input(overlayPath)
+      .input(path.resolve(overlayPath))
       .complexFilter(['[0:v][1:v]overlay=0:0[v]'])
       .outputOptions(['-map [v]', '-c:v libx264', '-preset fast', '-crf 23'])
       .save(compositedPath)

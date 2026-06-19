@@ -37,12 +37,19 @@ export async function renderOverlay(params: {
     browserExecutable,
   });
 
-  const outputPath = path.join(tempDir, 'overlay.mp4');
+  // ProRes 4444 carries a true alpha plane that ffmpeg's `overlay` filter decodes
+  // reliably. VP8/WebM alpha is stored as a side-channel that ffmpeg does NOT
+  // composite — it treats the overlay as opaque, masking the screen recording with
+  // black. ProRes is a large intermediate, but the assembler re-encodes to H.264.
+  const outputPath = path.join(tempDir, 'overlay.mov');
 
   await renderMedia({
     composition,
     serveUrl: bundleLocation,
-    codec: 'h264',
+    codec: 'prores',
+    proResProfile: '4444',
+    pixelFormat: 'yuva444p10le',
+    imageFormat: 'png',
     outputLocation: outputPath,
     inputProps,
     timeoutInMilliseconds,
