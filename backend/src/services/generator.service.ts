@@ -13,7 +13,12 @@ export async function generateScript(
 ): Promise<GeneratedScript> {
   logger.info(`[${jobId}] Starting script generation using Gemini (${env.GEMINI_MODEL})`);
 
-  const model = genAI.getGenerativeModel({ model: env.GEMINI_MODEL });
+  const model = genAI.getGenerativeModel({
+    model: env.GEMINI_MODEL,
+    generationConfig: {
+      responseMimeType: 'application/json',
+    },
+  });
 
   const prompt = `
     You are an expert product marketing manager.
@@ -46,14 +51,24 @@ export async function generateScript(
 
   try {
     const result = await model.generateContent(prompt);
-    const text = result.response.text().trim();
+    const rawText = result.response.text().trim();
+    
+    logger.debug(`[${jobId}] Raw Gemini response (first 500 chars): ${rawText.substring(0, 500)}`);
+    
+    // Strip markdown code fences (```json ... ``` or ``` ... ```)
+    let text = rawText.replace(/```(?:json)?\s*/gi, '').replace(/```/g, '').trim();
     
     // Extract the JSON object using regex to ignore any conversational text
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new Error(`Could not find JSON object in Gemini response: ${text.substring(0, 100)}...`);
+      throw new Error(`Could not find JSON object in Gemini response: ${rawText.substring(0, 200)}...`);
     }
-    const jsonString = jsonMatch[0];
+    let jsonString = jsonMatch[0];
+    
+    // Remove trailing commas before } or ] (common LLM issue)
+    jsonString = jsonString.replace(/,\s*([\]}])/g, '$1');
+    
+    logger.debug(`[${jobId}] Cleaned JSON (first 300 chars): ${jsonString.substring(0, 300)}`);
     
     const parsed: GeneratedScript = JSON.parse(jsonString);
     
