@@ -4,10 +4,10 @@ import fs from 'fs-extra';
 import path from 'path';
 
 import { env } from '../config/env';
-import { assemble } from '../services/assembler.service';
+import { assembleAudio, normalizeRecording } from '../services/assembler.service';
 import { generateScript } from '../services/generator.service';
 import { record } from '../services/recorder.service';
-import { renderOverlay } from '../services/remotion.service';
+import { renderReel } from '../services/remotion.service';
 import { scrape } from '../services/scraper.service';
 import { uploadVideo } from '../services/storage.service';
 import { generateVoiceover } from '../services/tts.service';
@@ -45,8 +45,9 @@ export const jobWorker = new Worker(
         data: { currentStep: 'Recording browser interaction...', stepProgress: 50 },
       });
 
-      // 3. Record
+      // 3. Record + normalize for embedding
       const recordingPath = await record(url, script, jobId, tempDir);
+      const normalizedRecording = await normalizeRecording(recordingPath, tempDir);
 
       await prisma.job.update({
         where: { id: jobId },
@@ -63,20 +64,32 @@ export const jobWorker = new Worker(
 
       await prisma.job.update({
         where: { id: jobId },
-        data: { currentStep: 'Rendering graphics...', stepProgress: 75 },
+        data: { currentStep: 'Rendering reel...', stepProgress: 75 },
       });
 
-      // 5. Remotion
-      const overlayPath = await renderOverlay({ jobId, templateId, script, tempDir });
+      // 5. Remotion — render the full vertical reel (visual only)
+      const brandName = script.brandName || scrapedData.brandName;
+      const sectionDurations = script.sections.map((s) => s.durationSeconds || 4);
+      const reelPath = await renderReel({
+        jobId,
+        script,
+        recordingPath: normalizedRecording,
+        logoPath: scrapedData.logoPath,
+        brandName,
+        hook: script.hook,
+        tagline: script.tagline || `${brandName} explainer video.`,
+        sectionDurations,
+        tempDir,
+      });
 
       await prisma.job.update({
         where: { id: jobId },
         data: { currentStep: 'Assembling final video...', stepProgress: 85 },
       });
 
-      // 6. Assemble
-      const finalVideoPath = await assemble(
-        { jobId, recordingPath, audioSegments, overlayPath, script },
+      // 6. Assemble audio (voiceover + optional music) onto the reel
+      const finalVideoPath = await assembleAudio(
+        { jobId, videoPath: reelPath, audioSegments },
         tempDir,
       );
 
@@ -101,7 +114,7 @@ export const jobWorker = new Worker(
           storagePath,
           publicUrl,
           templateId,
-          durationSec: script.sections.reduce((acc, s) => acc + s.durationSeconds, 0),
+          durationSec: script.sections.reduce((acc, s) => acc + s.durationSeconds, 0) + 5.5,
           fileSizeMb: (await fs.stat(finalVideoPath)).size / (1024 * 1024),
         },
       });

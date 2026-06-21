@@ -18,6 +18,8 @@ const STATUS_STYLES: Record<JobStatus, { label: string; className: string }> = {
 };
 
 const TEMPLATE_LABELS: Record<string, string> = {
+  'explainer-reel': 'Explainer Reel',
+  // Legacy ids kept for older videos.
   'modern-saas': 'Modern SaaS',
   'dark-dev': 'Dark Dev',
   'bold-startup': 'Bold Startup',

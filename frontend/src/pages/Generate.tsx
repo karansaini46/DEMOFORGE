@@ -12,31 +12,15 @@ interface TemplateConfig {
   id: string;
   name: string;
   description: string;
-  image: string;
   colors: string[];
 }
 
 const TEMPLATES: TemplateConfig[] = [
   {
-    id: 'modern-saas',
-    name: 'Modern SaaS',
-    description: 'Clean & professional with elegant transitions',
-    image: '/templates/modern-saas.png',
-    colors: ['#7C3AED', '#3B82F6', '#E5E7EB', '#FFFFFF'],
-  },
-  {
-    id: 'dark-dev',
-    name: 'Dark Dev',
-    description: 'Terminal-style with a developer aesthetic',
-    image: '/templates/dark-dev.png',
-    colors: ['#10B981', '#06B6D4', '#1F2937', '#111827'],
-  },
-  {
-    id: 'bold-startup',
-    name: 'Bold Startup',
-    description: 'High energy with vibrant gradients',
-    image: '/templates/bold-startup.png',
-    colors: ['#F97316', '#EC4899', '#EF4444', '#FBBF24'],
+    id: 'explainer-reel',
+    name: 'Explainer Reel',
+    description: 'Vertical 9:16 reel — your app inside an animated glass card',
+    colors: ['#5b78ff', '#aebcff', '#dbe3ff', '#f5f7ff'],
   },
 ];
 
@@ -50,7 +34,9 @@ function validateUrl(value: string): 'valid' | 'invalid' | 'empty' {
 export default function Generate() {
   const navigate = useNavigate();
   const [url, setUrl] = useState('');
-  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(
+    TEMPLATES[0].id,
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const urlStatus = useMemo(() => validateUrl(url), [url]);
@@ -168,7 +154,7 @@ interface TemplatePickerProps {
 function TemplatePicker({ templates, selected, onSelect }: TemplatePickerProps) {
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold text-gray-700">Choose a template</h2>
+      <h2 className="text-sm font-semibold text-gray-700">Video style</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {templates.map((tpl) => (
           <TemplateCard
@@ -209,13 +195,13 @@ function TemplateCard({ template, isSelected, onSelect }: TemplateCardProps) {
         </span>
       )}
 
-      <div className="aspect-[5/3] w-full overflow-hidden bg-gray-100">
-        <img
-          src={template.image}
-          alt={template.name}
-          className="h-full w-full object-cover"
-          loading="lazy"
-        />
+      <div className="mx-auto aspect-[9/16] w-2/3 overflow-hidden rounded-lg border border-gray-200 bg-gradient-to-b from-[#eef2ff] to-[#f7f8ff]">
+        <div className="flex h-full flex-col items-center justify-center gap-2 p-3">
+          <div className="aspect-video w-full rounded-md bg-gradient-to-br from-[#e8edff] via-white to-[#dfe7ff] shadow-sm ring-1 ring-[#aebcff]/50" />
+          <div className="text-center text-[10px] font-semibold leading-tight text-[#5b78ff]">
+            POV: your explainer reel
+          </div>
+        </div>
       </div>
 
       <div className="p-3">

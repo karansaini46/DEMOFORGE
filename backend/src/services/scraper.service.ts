@@ -1,5 +1,6 @@
 import path from 'node:path';
 
+import fs from 'fs-extra';
 import { chromium } from 'playwright';
 
 import { env } from '../config/env';
@@ -13,6 +14,10 @@ export interface ScrapedData {
   navItems: { text: string; href: string }[];
   screenshots: string[];
   interactableElements: { label: string; selector: string; type: string }[];
+  /** Cleaned brand/product name derived from the page title. */
+  brandName: string;
+  /** Absolute path to the downloaded brand logo (png), if one was found. */
+  logoPath?: string;
 }
 
 // Resource types that add no value to a static scrape — blocked to speed up loads.
@@ -113,14 +118,61 @@ export async function scrape(
         })
         .slice(0, 10);
 
-      return { title, description, features, navItems, interactableElements };
+      // Best-effort brand logo: prefer apple-touch-icon / og:image / svg-or-png
+      // favicons (larger, sharper) over a tiny default favicon.
+      const pickAttr = (sel, attr) =>
+        document.querySelector(sel)?.getAttribute(attr) || '';
+      const logoCandidates = [
+        pickAttr('link[rel="apple-touch-icon"]', 'href'),
+        pickAttr('link[rel="apple-touch-icon-precomposed"]', 'href'),
+        pickAttr('meta[property="og:image"]', 'content'),
+        pickAttr('link[rel="icon"][type="image/svg+xml"]', 'href'),
+        pickAttr('link[rel="icon"]', 'href'),
+        pickAttr('link[rel="shortcut icon"]', 'href'),
+      ].filter((h) => h && h.length > 0);
+      const logoUrl = logoCandidates.length
+        ? new URL(logoCandidates[0], document.baseURI).href
+        : '';
+
+      return { title, description, features, navItems, interactableElements, logoUrl };
     })()`) as {
       title: string;
       description: string;
       features: string[];
       navItems: { text: string; href: string }[];
       interactableElements: { label: string; selector: string; type: string }[];
+      logoUrl: string;
     };
+
+    // Derive a clean brand name from the title (drop anything after a separator).
+    const brandName =
+      extracted.title.split(/[|\-–—:·•]/)[0].trim() ||
+      new URL(validatedUrl).hostname.replace(/^www\./, '');
+
+    // Download the logo (best-effort) so Remotion can embed it locally.
+    let logoPath: string | undefined;
+    if (extracted.logoUrl) {
+      try {
+        const resp = await page.request.get(extracted.logoUrl, { timeout: 10000 });
+        if (resp.ok()) {
+          const body = await resp.body();
+          if (body.length > 0) {
+            const ext = extracted.logoUrl.toLowerCase().includes('.svg')
+              ? 'svg'
+              : 'png';
+            const target = path.resolve(tempDir, `logo.${ext}`);
+            await fs.writeFile(target, body);
+            logoPath = target;
+          }
+        }
+      } catch (err) {
+        logger.warn(
+          `[scrape:${jobId}] failed to download logo ${extracted.logoUrl}: ${
+            err instanceof Error ? err.message : 'unknown error'
+          }`,
+        );
+      }
+    }
 
     // Main screenshot.
     const screenshots: string[] = [];
@@ -173,6 +225,8 @@ export async function scrape(
       navItems: extracted.navItems,
       screenshots,
       interactableElements: extracted.interactableElements,
+      brandName,
+      logoPath,
     };
   } catch (err) {
     if (err instanceof AppError) throw err;

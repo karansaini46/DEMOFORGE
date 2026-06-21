@@ -309,7 +309,7 @@ function VideoResult({ video }: VideoResultProps) {
     >
       <h3 className="text-sm font-semibold text-gray-700">Your demo video</h3>
 
-      <div className="aspect-video overflow-hidden rounded-lg bg-black">
+      <div className="mx-auto aspect-[9/16] w-full max-w-[360px] overflow-hidden rounded-lg bg-black">
         <ReactPlayer
           url={video.publicUrl}
           controls

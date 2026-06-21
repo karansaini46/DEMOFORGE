@@ -28,6 +28,9 @@ const envSchema = z.object({
   GEMINI_MODEL: z.string().min(1),
 
   TEMP_DIR: z.string().min(1),
+  // Optional background music track mixed under the voiceover. If unset or the
+  // file is missing, the reel is rendered with voiceover only.
+  MUSIC_PATH: z.string().optional(),
   MAX_CONCURRENT_JOBS: z.coerce.number().int().positive(),
   JOB_TIMEOUT_MS: z.coerce.number().int().positive(),
   MAX_VIDEO_DURATION_SECONDS: z.coerce.number().int().positive(),

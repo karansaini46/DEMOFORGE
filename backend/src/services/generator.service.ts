@@ -21,32 +21,47 @@ export async function generateScript(
   });
 
   const prompt = `
-    You are an expert product marketing manager.
-    Create a highly engaging product demo script based on the following website data:
-    
+    You are an expert short-form video scriptwriter creating a vertical (9:16)
+    "SaaS explainer reel" — the kind of punchy, energetic product video posted on
+    TikTok / Instagram Reels. The real product's screen recording plays inside a
+    floating glass card while short kinetic captions and a voiceover sell it.
+
+    Base the script on this scraped website data:
+
+    BRAND: ${scrapedData.brandName}
     TITLE: ${scrapedData.title}
     DESCRIPTION: ${scrapedData.description}
+    KEY HEADINGS: ${scrapedData.features.join(' | ')}
     INTERACTABLE ELEMENTS: ${scrapedData.interactableElements.map((e) => `${e.label} (${e.type})`).join(', ')}
 
-    You MUST return ONLY a raw JSON object (without any markdown formatting or code blocks) that perfectly matches this exact TypeScript interface:
+    You MUST return ONLY a raw JSON object (no markdown, no code fences) matching
+    this exact TypeScript interface:
 
     {
+      "brandName": "string — the product's short brand name",
+      "hook": "string — a punchy first caption line, e.g. 'POV: You just found your new'",
+      "tagline": "string — a short 2-4 word second line, e.g. 'favorite SaaS tool.'",
       "sections": [
         {
           "action": "wait:1",
-          "durationSeconds": 5,
-          "narration": "Welcome to the demo."
+          "durationSeconds": 4,
+          "narration": "Full sentence spoken by the voiceover for this beat.",
+          "onScreenText": "<= 6 word kinetic caption"
         }
       ]
     }
 
-    The 'action' string MUST be one of:
-    - "navigate: <url>"
-    - "click: <css_selector>"
-    - "scroll:down"
-    - "wait: <seconds>"
-
-    Keep the video under ${env.MAX_VIDEO_DURATION_SECONDS} seconds total. Use simple, punchy narration.
+    Rules:
+    - The 'action' string MUST be one of:
+      - "navigate: <url>"
+      - "click: <css_selector>"
+      - "scroll:down"
+      - "wait: <seconds>"
+    - 4 to 6 sections. Each 'durationSeconds' between 3 and 6.
+    - 'narration': one natural spoken sentence (this becomes the voiceover).
+    - 'onScreenText': a SHORT punchy phrase (<= 6 words), NOT the same as the narration.
+    - Keep the spoken video under ${env.MAX_VIDEO_DURATION_SECONDS} seconds total.
+    - Tone: confident, modern, benefit-driven.
   `;
 
   try {
