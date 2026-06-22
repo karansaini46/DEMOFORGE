@@ -9,6 +9,21 @@ import { logger } from '../utils/logger';
 
 const PUBLIC_DIR = path.resolve(__dirname, '../../remotion/public');
 
+export type BrowserTemplate = 'modern-saas' | 'dark-dev' | 'bold-startup';
+
+/** Derive a clean "domain/path" label for the BrowserFrame URL bar. */
+function toUrlBarLabel(rawUrl?: string): string | undefined {
+  if (!rawUrl) return undefined;
+  try {
+    const u = new URL(rawUrl);
+    const host = u.hostname.replace(/^www\./, '');
+    const path = u.pathname && u.pathname !== '/' ? u.pathname : '';
+    return `${host}${path}`;
+  } catch {
+    return rawUrl.replace(/^https?:\/\//, '').replace(/^www\./, '');
+  }
+}
+
 export async function renderReel(params: {
   jobId: string;
   script: GeneratedScript;
@@ -18,6 +33,10 @@ export async function renderReel(params: {
   hook?: string;
   tagline?: string;
   sectionDurations?: number[];
+  /** The demo's site URL — shown (as a domain) in the BrowserFrame URL bar. */
+  url?: string;
+  /** BrowserFrame chrome theme. */
+  template?: BrowserTemplate;
   tempDir: string;
 }): Promise<string> {
   const {
@@ -29,6 +48,8 @@ export async function renderReel(params: {
     hook,
     tagline,
     sectionDurations,
+    url,
+    template,
     tempDir,
   } = params;
 
@@ -67,6 +88,8 @@ export async function renderReel(params: {
       hook,
       tagline,
       sectionDurations,
+      url: toUrlBarLabel(url),
+      template: template ?? 'modern-saas',
     };
 
     const timeoutInMilliseconds = 120000;

@@ -7,7 +7,7 @@ import { env } from '../config/env';
 import { assembleAudio, normalizeRecording } from '../services/assembler.service';
 import { generateScript } from '../services/generator.service';
 import { record } from '../services/recorder.service';
-import { renderReel } from '../services/remotion.service';
+import { renderReel, BrowserTemplate } from '../services/remotion.service';
 import { scrape } from '../services/scraper.service';
 import { uploadVideo } from '../services/storage.service';
 import { generateVoiceover } from '../services/tts.service';
@@ -70,6 +70,11 @@ export const jobWorker = new Worker(
       // 5. Remotion — render the full vertical reel (visual only)
       const brandName = script.brandName || scrapedData.brandName;
       const sectionDurations = script.sections.map((s) => s.durationSeconds || 4);
+      const template = (['modern-saas', 'dark-dev', 'bold-startup'] as const).includes(
+        templateId,
+      )
+        ? (templateId as BrowserTemplate)
+        : 'modern-saas';
       const reelPath = await renderReel({
         jobId,
         script,
@@ -79,6 +84,8 @@ export const jobWorker = new Worker(
         hook: script.hook,
         tagline: script.tagline || `${brandName} explainer video.`,
         sectionDurations,
+        url,
+        template,
         tempDir,
       });
 

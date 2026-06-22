@@ -17,6 +17,7 @@ import { loadFont as loadInter } from '@remotion/google-fonts/Inter';
 import { loadFont as loadCaveat } from '@remotion/google-fonts/Caveat';
 
 import { GeneratedScript } from '../../src/types';
+import { BrowserFrame, BrowserTemplate } from './components/BrowserFrame';
 
 const { fontFamily: SANS } = loadInter('normal', {
   weights: ['500', '600', '700', '800'],
@@ -52,6 +53,10 @@ export interface ReelProps {
   tagline?: string;
   /** Per-section durations in seconds (measured from voiceover). */
   sectionDurations?: number[];
+  /** Shown in the BrowserFrame URL bar (the demo's site URL). */
+  url?: string;
+  /** Selects the BrowserFrame chrome theme. */
+  template?: BrowserTemplate;
 }
 
 const sectionSeconds = (props: ReelProps): number[] => {
@@ -211,7 +216,8 @@ const Caption: React.FC<{ hook: string; tagline: string }> = ({ hook, tagline })
         position: 'absolute',
         left: 40,
         right: 40,
-        top: CARD.y + CARD.height + 36,
+        // Sit below the centered browser-frame band (band bottom ~842px).
+        top: 872,
         textAlign: 'center',
         opacity: o,
         transform: `translateY(${y}px)`,
@@ -331,6 +337,113 @@ const OutroReveal: React.FC<{ logoSrc?: string; brandName?: string }> = ({
   );
 };
 
+// ---------- Intro overlay (browser-frame era) ----------
+// The intro card sits ON TOP of the browser frame for the full intro, then
+// cross-fades out over the final ~12 frames so the frame is revealed.
+const IntroOverlay: React.FC<{
+  logoSrc?: string;
+  brandName?: string;
+  introFrames: number;
+}> = ({ logoSrc, brandName, introFrames }) => {
+  const frame = useCurrentFrame();
+  const fadeStart = Math.max(0, introFrames - 12);
+  const fade = interpolate(frame, [fadeStart, introFrames], [1, 0], {
+    extrapolateLeft: 'clamp',
+    extrapolateRight: 'clamp',
+  });
+  return (
+    <AbsoluteFill style={{ opacity: fade }}>
+      <Background />
+      <IntroReveal logoSrc={logoSrc} brandName={brandName} />
+    </AbsoluteFill>
+  );
+};
+
+// ---------- Browser frame base layer (z-0) ----------
+// BrowserFrame is authored at the literal 1280x720 spec. The composition canvas
+// is vertical (720x1280), so we render the frame plus the recording into a
+// 1280x720 stage and scale that stage to the canvas width, centered vertically.
+const FRAME_W = 1280;
+const FRAME_H = 720;
+// Content-area rect inside BrowserFrame (window x=60 y=43, top bar 38px high).
+const CONTENT = { x: 60, y: 43 + 38, width: 1160, height: 720 - 43 - 38 - 43 };
+
+const ScaledBrowserFrame: React.FC<{
+  url: string;
+  template: BrowserTemplate;
+  recordingUrl?: string;
+  recordingSrc?: string;
+  introFrames: number;
+  middleFrames: number;
+  inMiddle: boolean;
+}> = ({ url, template, recordingUrl, recordingSrc, introFrames, middleFrames, inMiddle }) => {
+  const { width: canvasW, height: canvasH } = useVideoConfig();
+  const scale = canvasW / FRAME_W;
+  const scaledH = FRAME_H * scale;
+  const offsetY = (canvasH - scaledH) / 2;
+
+  return (
+    <AbsoluteFill>
+      <div
+        style={{
+          position: 'absolute',
+          top: offsetY,
+          left: 0,
+          width: FRAME_W,
+          height: FRAME_H,
+          transform: `scale(${scale})`,
+          transformOrigin: 'top left',
+        }}
+      >
+        {/* Browser chrome (gradient + window + top bar; content area transparent) */}
+        <BrowserFrame url={url} width={FRAME_W} height={FRAME_H} template={template} />
+
+        {/* Recording composited into the frame's content area during the middle */}
+        {recordingUrl && (
+          <Sequence from={introFrames} durationInFrames={middleFrames}>
+            <div
+              style={{
+                position: 'absolute',
+                left: CONTENT.x,
+                top: CONTENT.y,
+                width: CONTENT.width,
+                height: CONTENT.height,
+                overflow: 'hidden',
+              }}
+            >
+              <OffthreadVideo
+                src={recordingUrl}
+                muted
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            </div>
+          </Sequence>
+        )}
+        {!recordingSrc && inMiddle && (
+          <div
+            style={{
+              position: 'absolute',
+              left: CONTENT.x,
+              top: CONTENT.y,
+              width: CONTENT.width,
+              height: CONTENT.height,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: ACCENT,
+              fontFamily: SANS,
+              fontWeight: 700,
+              fontSize: 40,
+            }}
+          >
+            [ screen recording ]
+          </div>
+        )}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
 // ---------- Main composition ----------
 const ExplainerReel: React.FC<ReelProps> = (props) => {
   const { fps } = useVideoConfig();
@@ -362,46 +475,41 @@ const ExplainerReel: React.FC<ReelProps> = (props) => {
   const recordingUrl = props.recordingSrc ? staticFile(props.recordingSrc) : undefined;
   const logoUrl = props.logoSrc ? staticFile(props.logoSrc) : undefined;
 
+  const template: BrowserTemplate = props.template ?? 'modern-saas';
+  const url = props.url || 'app.demoforge.dev';
+
   return (
     <AbsoluteFill>
       <Background />
 
-      <GlassCard>
-        {/* Intro reveal inside the card */}
-        <Sequence durationInFrames={introFrames}>
-          <IntroReveal logoSrc={logoUrl} brandName={props.brandName} />
-        </Sequence>
+      {/*
+        BASE LAYER (z-0): the browser-chrome mockup. BrowserFrame is built to
+        the literal 1280x720 spec, so we scale it to the vertical canvas width
+        and center it. The recording is composited into the frame's (otherwise
+        transparent) content area below.
+      */}
+      <ScaledBrowserFrame
+        url={url}
+        template={template}
+        recordingUrl={recordingUrl}
+        recordingSrc={props.recordingSrc}
+        introFrames={introFrames}
+        middleFrames={middleFrames}
+        inMiddle={inMiddle}
+      />
 
-        {/* Embedded screen recording during the middle */}
-        {recordingUrl && (
-          <Sequence from={introFrames} durationInFrames={middleFrames}>
-            <OffthreadVideo
-              src={recordingUrl}
-              muted
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          </Sequence>
-        )}
-        {!props.recordingSrc && inMiddle && (
-          <AbsoluteFill
-            style={{
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: ACCENT,
-              fontFamily: SANS,
-              fontWeight: 700,
-              fontSize: 28,
-            }}
-          >
-            [ screen recording ]
-          </AbsoluteFill>
-        )}
+      {/* Intro card ON TOP of everything, then fades out */}
+      <Sequence durationInFrames={introFrames}>
+        <IntroOverlay logoSrc={logoUrl} brandName={props.brandName} introFrames={introFrames} />
+      </Sequence>
 
-        {/* Outro reveal inside the card */}
-        <Sequence from={introFrames + middleFrames} durationInFrames={outroFrames}>
+      {/* Outro card ON TOP for the final stretch (full-cover, like the intro) */}
+      <Sequence from={introFrames + middleFrames} durationInFrames={outroFrames}>
+        <AbsoluteFill>
+          <Background />
           <OutroReveal logoSrc={logoUrl} brandName={props.brandName} />
-        </Sequence>
-      </GlassCard>
+        </AbsoluteFill>
+      </Sequence>
 
       {/* Kinetic headline above the card — one Sequence per section */}
       {sectionWindows.map((w, i) =>
@@ -440,6 +548,8 @@ export const RemotionRoot: React.FC = () => {
     hook: inputProps.hook,
     tagline: inputProps.tagline,
     sectionDurations: inputProps.sectionDurations,
+    url: inputProps.url,
+    template: inputProps.template,
   };
 
   return (
